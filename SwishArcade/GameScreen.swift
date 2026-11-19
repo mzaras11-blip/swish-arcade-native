@@ -1,35 +1,88 @@
 import SwiftUI
 
-/// The whole game screen, composed like the ad frames: versus HUD on top,
-/// gold-framed board in the middle under the cinematic camera, combo bar
-/// and power-ups, chunky rack at the bottom, mascot living on screen.
+/// Screen layout, copied from the web app Michael already plays
+/// (~/workspace/swish-arcade/app/SWISH/Resources/web/index.html,
+/// `#gameScreen` / `.game-col`): a centered column — screen width − 24,
+/// max 460 — holding, in the web's order: title row, scoreboard,
+/// timer bar, combo bar, status line, board, rack, tool row.
+///
+/// Build 7 invented its own layout instead, and got it wrong at the
+/// root: the screen's GeometryReader proxy was discarded
+/// (`GeometryReader { _ in … }`), so the stack sized itself to its
+/// largest child (the background's offset glow circles) instead of the
+/// screen — a ~482pt-wide, content-height stack centered on a 402pt
+/// phone: black bars top and bottom, controls overflowing the right
+/// edge, and the board slot collapsing to a thumbnail. Here every row
+/// has a fixed height taken from the web's CSS and the board — the one
+/// flexible element — gets exactly the space the copied chrome leaves.
+struct GameLayout {
+    static let gap: CGFloat = 8
+    static let titleHeight: CGFloat = 22
+    static let hudHeight: CGFloat = 58
+    static let timerBarHeight: CGFloat = 10
+    static let comboHeight: CGFloat = 44
+    static let statusHeight: CGFloat = 20
+    static let rackTile: CGFloat = 56
+    static let rackPadH: CGFloat = 10
+    static let rackHeight: CGFloat = 68   // 56 tile + 6 + 6 tray padding
+    static let toolHeight: CGFloat = 42
+
+    let columnWidth: CGFloat
+    let topPad: CGFloat
+    let bottomPad: CGFloat
+    let cell: CGFloat
+    let boardSize: CGSize
+
+    init(screen: CGSize, safeTop: CGFloat, safeBottom: CGFloat) {
+        columnWidth = min(screen.width - 24, 460)
+        topPad = safeTop + 6
+        bottomPad = safeBottom + 8
+        let chrome = Self.titleHeight + Self.hudHeight + Self.timerBarHeight
+            + Self.comboHeight + Self.statusHeight + Self.rackHeight + Self.toolHeight
+            + Self.gap * 7
+        let availH = screen.height - topPad - bottomPad - chrome
+        // The web sizes the board from the column width alone and lets
+        // the page scroll; a native game screen cannot scroll mid-drag,
+        // so the cell is the smaller of the web's width-driven size and
+        // the height the copied chrome leaves.
+        let cellByWidth = (columnWidth - BoardView.gap * CGFloat(PuzzleGenerator.cols - 1))
+            / CGFloat(PuzzleGenerator.cols)
+        let cellByHeight = (availH - BoardView.gap * CGFloat(PuzzleGenerator.rows - 1))
+            / CGFloat(PuzzleGenerator.rows)
+        cell = max(20, min(cellByWidth, cellByHeight))
+        boardSize = BoardView.boardSize(cell: cell)
+    }
+}
+
+/// The whole game screen: the web app's skeleton (see GameLayout) with
+/// the native juice layered on top — versus HUD, cinematic camera on
+/// the board, combo bar with the mascot living in it, chunky rack.
 struct GameScreen: View {
     @EnvironmentObject var vm: GameViewModel
+    @Environment(\.scenePhase) private var scenePhase
     private let tickTimer = Timer.publish(every: 0.05, on: .main, in: .common).autoconnect()
 
     var body: some View {
-        GeometryReader { _ in
+        GeometryReader { geo in
+            let layout = GameLayout(screen: geo.size,
+                                    safeTop: geo.safeAreaInsets.top,
+                                    safeBottom: geo.safeAreaInsets.bottom)
             ZStack {
                 EnergyBackground()
-                VStack(spacing: 8) {
+                VStack(spacing: GameLayout.gap) {
+                    titleRow
                     VersusHUD()
-                    clueStrip
-                    boardSlot
-                    ComboBar()
-                    powerRow
+                    timerBar
+                    comboRow
+                    statusLine
+                    boardSlot(layout: layout)
                     rack
+                    powerRow
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 6)
-                .padding(.bottom, 10)
-
-                MascotView(mood: vm.phase == .playing && vm.cpuThinking && vm.mascotMood == .idle
-                               ? .thinking : vm.mascotMood,
-                           size: 74)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomLeading)
-                    .padding(.leading, 2)
-                    .padding(.bottom, 96)
-                    .allowsHitTesting(false)
+                .frame(width: layout.columnWidth)
+                .padding(.top, layout.topPad)
+                .padding(.bottom, layout.bottomPad)
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
 
                 EffectsLayer()
 
@@ -42,49 +95,120 @@ struct GameScreen: View {
                     GameOverOverlay()
                 }
             }
+            .frame(width: geo.size.width, height: geo.size.height)
             .coordinateSpace(name: "game")
         }
         .onReceive(tickTimer) { _ in vm.tick() }
+        // A system interruption (call, Control Center, app switch)
+        // cancels the drag gesture WITHOUT firing onEnded — without
+        // this, the lifted tile would hang in the air mid-match
+        // (Spec 2 failure mode 1; build 7 had cancelDrag() wired to
+        // nothing).
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase != .active { vm.cancelDrag() }
+        }
+    }
+
+    // MARK: Title row (the web's hud-top: puzzle title + chips)
+
+    private var titleRow: some View {
+        HStack(spacing: 8) {
+            Text(vm.puzzle.title)
+                .font(.system(size: 17, weight: .black, design: .rounded))
+                .foregroundStyle(.white)
+                .lineLimit(1)
+            Spacer(minLength: 8)
+            if vm.comboMult > 1 {
+                Text("COMBO ×\(vm.comboMult)")
+                    .font(.system(size: 11.5, weight: .black, design: .rounded))
+                    .foregroundStyle(.black.opacity(0.75))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(TilePalette.bolt))
+            } else {
+                Text("\(vm.puzzle.words.count) WORDS")
+                    .font(.system(size: 11.5, weight: .black, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .background(Capsule().fill(Color.white.opacity(0.12)))
+            }
+        }
+        .frame(height: GameLayout.titleHeight)
+    }
+
+    // MARK: Timer bar (the web's full-width timerbar under the scoreboard)
+
+    private var timerBar: some View {
+        let frac = min(1, max(0, vm.timeLeftMs / (MatchEngine.matchSeconds * 1000)))
+        let low = vm.phase == .playing && vm.timeLeftMs <= 15_000
+        return Capsule()
+            .fill(Color.white.opacity(0.16))
+            .frame(height: GameLayout.timerBarHeight)
+            .overlay(alignment: .leading) {
+                GeometryReader { g in
+                    Capsule()
+                        .fill(LinearGradient(colors: low
+                            ? [Color(red: 1, green: 0.35, blue: 0.3), Color(red: 1, green: 0.18, blue: 0.33)]
+                            : [Color(red: 0.04, green: 0.52, blue: 1.0), Color(red: 0.20, green: 0.68, blue: 0.90)],
+                            startPoint: .leading, endPoint: .trailing))
+                        .frame(width: g.size.width * CGFloat(frac), height: GameLayout.timerBarHeight)
+                }
+            }
+            .frame(height: GameLayout.timerBarHeight)
+    }
+
+    // MARK: Combo bar (the web's rush bar) with the mascot living in it
+
+    private var mascotMood: MascotMood {
+        vm.phase == .playing && vm.cpuThinking && vm.mascotMood == .idle ? .thinking : vm.mascotMood
+    }
+
+    private var comboRow: some View {
+        HStack(spacing: 8) {
+            // In-layout, in a fixed slot: he reacts to the match but can
+            // never cover a control or slide off-screen (build 7 floated
+            // him over the HINT button, half cut off at the left edge).
+            MascotView(mood: mascotMood, size: 40)
+                .frame(width: 50, height: GameLayout.comboHeight)
+                .allowsHitTesting(false)
+            ComboBar()
+        }
+        .frame(height: GameLayout.comboHeight)
+    }
+
+    // MARK: Status line (the web's statusLine: live word, thinking, hints)
+
+    private var statusText: String {
+        if let live = vm.liveWord { return "\(live.text)  ·  \(live.clue)" }
+        if vm.phase == .playing && vm.cpuThinking { return "CPU is thinking…" }
+        if vm.phase == .playing { return "Drag a tile onto the board — chain combos to ×5" }
+        return vm.puzzle.title
+    }
+
+    private var statusLine: some View {
+        Text(statusText)
+            .font(.system(size: 13, weight: .semibold, design: .rounded))
+            .foregroundStyle(.white.opacity(0.85))
+            .lineLimit(1)
+            .frame(maxWidth: .infinity)
+            .frame(height: GameLayout.statusHeight)
     }
 
     // MARK: Board under the camera
 
-    private var boardSlot: some View {
+    private func boardSlot(layout: GameLayout) -> some View {
         Color.clear
-            .aspectRatio(CGFloat(PuzzleGenerator.cols) / CGFloat(PuzzleGenerator.rows), contentMode: .fit)
+            .frame(width: layout.boardSize.width, height: layout.boardSize.height)
             .background(GeometryReader { proxy in
                 Color.clear
                     .onAppear { vm.boardRect = proxy.frame(in: .named("game")) }
                     .onChange(of: proxy.size) { _, _ in vm.boardRect = proxy.frame(in: .named("game")) }
             })
             .overlay {
-                BoardView()
+                BoardView(cell: layout.cell)
                     .scaleEffect(vm.cameraScale, anchor: vm.cameraAnchor)
             }
-    }
-
-    // MARK: Clue / live-word strip
-
-    private var clueStrip: some View {
-        Group {
-            if let live = vm.liveWord {
-                HStack(spacing: 8) {
-                    Text(live.text)
-                        .font(.system(size: 15, weight: .black, design: .rounded))
-                        .foregroundStyle(TilePalette.bolt)
-                    Text(live.clue)
-                        .font(.system(size: 12.5, weight: .semibold, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.85))
-                        .lineLimit(1)
-                }
-            } else {
-                Text(vm.phase == .playing ? "Drag a tile onto the board — chain combos to ×5"
-                                          : vm.puzzle.title)
-                    .font(.system(size: 12.5, weight: .semibold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.75))
-            }
-        }
-        .frame(height: 20)
     }
 
     // MARK: Power-ups
@@ -95,18 +219,19 @@ struct GameScreen: View {
             PowerButton(label: "BOMB", count: vm.bombsLeft, armed: vm.bombArmed) { vm.armBomb() }
             PowerButton(label: "SHUFFLE", count: vm.shufflesLeft, armed: false) { vm.useShuffle() }
         }
+        .frame(height: GameLayout.toolHeight)
     }
 
-    // MARK: Rack
+    // MARK: Rack (the web's centered tile row, in the ad's gold tray)
 
     private var rack: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: GameLayout.gap) {
             ForEach(0..<MatchEngine.rackSize, id: \.self) { slot in
                 rackTile(slot: slot)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.horizontal, GameLayout.rackPadH)
+        .padding(.vertical, 6)
         .background(
             RoundedRectangle(cornerRadius: 18, style: .continuous)
                 .fill(LinearGradient(colors: [Color(red: 0.98, green: 0.72, blue: 0.25),
@@ -114,6 +239,7 @@ struct GameScreen: View {
                                      startPoint: .top, endPoint: .bottom))
                 .shadow(color: .black.opacity(0.4), radius: 6, x: 0, y: 3)
         )
+        .frame(height: GameLayout.rackHeight)
         .background(GeometryReader { proxy in
             Color.clear
                 .onAppear { vm.rackRect = proxy.frame(in: .named("game")) }
@@ -129,28 +255,32 @@ struct GameScreen: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color.black.opacity(0.18))
             if let letter {
-                TileView(letter: letter, size: 52, ghost: isDragging)
+                TileView(letter: letter, size: GameLayout.rackTile, ghost: isDragging)
                     .scaleEffect(vm.selectedSlot == slot ? 1.1 : 1)
                     .offset(y: vm.selectedSlot == slot ? -6 : 0)
             }
         }
-        .frame(maxWidth: .infinity)
-        .frame(height: 60)
+        .frame(width: GameLayout.rackTile, height: GameLayout.rackTile)
         .contentShape(Rectangle())
         .onTapGesture { vm.tapRackSlot(slot) }
         .gesture(
             DragGesture(minimumDistance: 3, coordinateSpace: .named("game"))
                 .onChanged { value in
+                    // Only the slot that owns the drag may move it —
+                    // a second finger on another tile used to hijack
+                    // the first tile's drag (Claude audit, 2026-11-19).
                     if vm.drag == nil { vm.beginDrag(source: .rack(slot), at: value.location) }
-                    else { vm.updateDrag(at: value.location) }
+                    else if vm.drag?.source == .rack(slot) { vm.updateDrag(at: value.location) }
                 }
-                .onEnded { _ in vm.endDrag() }
+                .onEnded { _ in
+                    if vm.drag?.source == .rack(slot) { vm.endDrag() }
+                }
         )
         .animation(.spring(response: 0.3, dampingFraction: 0.65), value: vm.selectedSlot)
     }
 }
 
-// MARK: - Versus HUD
+// MARK: - Versus HUD (the web's scoreboard: panel | timer | panel)
 
 struct VersusHUD: View {
     @EnvironmentObject var vm: GameViewModel
@@ -162,12 +292,13 @@ struct VersusHUD: View {
 
     var body: some View {
         HStack(spacing: 8) {
-            panel(side: .you, name: "PLAYER 1", score: vm.displayedScores[.you] ?? 0,
+            panel(side: .you, name: "YOU", score: vm.displayedScores[.you] ?? 0,
                   color: TilePalette.brandBlue)
             centerPill
-            panel(side: .cpu, name: "PLAYER 2", score: vm.displayedScores[.cpu] ?? 0,
+            panel(side: .cpu, name: "CPU", score: vm.displayedScores[.cpu] ?? 0,
                   color: Color(red: 0.62, green: 0.14, blue: 0.24))
         }
+        .frame(height: GameLayout.hudHeight)
     }
 
     private func panel(side: Side, name: String, score: Int, color: Color) -> some View {
@@ -175,11 +306,11 @@ struct VersusHUD: View {
         let frac = Double(vm.scores[side] ?? 0) / Double(total)
         return VStack(spacing: 3) {
             HStack(spacing: 6) {
-                AvatarView(isCPU: side == .cpu, size: 34)
+                AvatarView(isCPU: side == .cpu, size: 28)
                 VStack(alignment: .leading, spacing: 0) {
                     HStack(spacing: 4) {
                         Text(name)
-                            .font(.system(size: 10.5, weight: .black, design: .rounded))
+                            .font(.system(size: 10, weight: .black, design: .rounded))
                             .foregroundStyle(.white.opacity(0.9))
                         if leader == side {
                             CrownShape().fill(TilePalette.bolt)
@@ -193,22 +324,22 @@ struct VersusHUD: View {
                 }
                 Spacer(minLength: 0)
             }
-            Capsule().fill(Color.white.opacity(0.18))
-                .frame(height: 6)
-                .overlay(alignment: .leading) {
+            // Score share bar: the fill is a fraction of the TRACK's real
+            // width (build 7 hard-coded a 92pt cap, so the bar could
+            // never fill and overflowed narrow panels).
+            GeometryReader { g in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.white.opacity(0.18))
                     Capsule().fill(color)
-                        .frame(width: CGFloat(max(6, 92 * frac)), height: 6)
+                        .frame(width: max(6, g.size.width * CGFloat(frac)))
                         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: frac)
                 }
-            if side == .cpu {
-                Text(vm.cpuThinking && vm.phase == .playing ? "CPU is thinking…" : " ")
-                    .font(.system(size: 9.5, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white.opacity(0.65))
-                    .frame(height: 11, alignment: .leading)
             }
+            .frame(height: 6)
         }
         .padding(.horizontal, 9)
-        .padding(.vertical, 6)
+        .padding(.vertical, 5)
+        .frame(maxWidth: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 13, style: .continuous)
                 .fill(color.opacity(0.28))
@@ -220,23 +351,17 @@ struct VersusHUD: View {
     private var centerPill: some View {
         let secs = Int(ceil(vm.timeLeftMs / 1000))
         let urgent = secs <= 15 && vm.phase == .playing
-        return VStack(spacing: 2) {
-            Text("VS")
-                .font(.system(size: 15, weight: .black, design: .rounded))
-                .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.4), radius: 1, x: 0, y: 1)
+        return VStack(spacing: 1) {
             Text(String(format: "%d:%02d", secs / 60, secs % 60))
-                .font(.system(size: 13, weight: .black, design: .rounded))
+                .font(.system(size: 18, weight: .black, design: .rounded))
                 .foregroundStyle(urgent ? Color(red: 1, green: 0.4, blue: 0.4) : .white)
-            Capsule().fill(Color.white.opacity(0.2))
-                .frame(width: 44, height: 4)
-                .overlay(alignment: .leading) {
-                    Capsule().fill(urgent ? Color(red: 1, green: 0.4, blue: 0.4) : TilePalette.bolt)
-                        .frame(width: 44 * CGFloat(vm.timeLeftMs / (MatchEngine.matchSeconds * 1000)), height: 4)
-                }
+            Text("SECONDS")
+                .font(.system(size: 7.5, weight: .bold, design: .rounded))
+                .foregroundStyle(.white.opacity(0.65))
+                .tracking(1.2)
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+        .padding(.vertical, 5)
         .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
             .fill(Color.black.opacity(0.35)))
         .scaleEffect(urgent ? 1.07 : 1)
@@ -272,7 +397,7 @@ struct ComboBar: View {
                     .tracking(1.4)
             }
         }
-        .frame(height: 46)
+        .frame(height: GameLayout.comboHeight)
         .scaleEffect(surgeScale)
         .onChange(of: vm.comboSurge) { _, _ in
             withAnimation(.spring(response: 0.22, dampingFraction: 0.5)) { surgeScale = 1.06 }
@@ -304,7 +429,7 @@ struct PowerButton: View {
                     .background(Capsule().fill(TilePalette.bolt))
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 10)
+            .padding(.vertical, 9)
             .background(
                 RoundedRectangle(cornerRadius: 13, style: .continuous)
                     .fill(LinearGradient(colors: armed

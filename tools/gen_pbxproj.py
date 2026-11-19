@@ -175,7 +175,7 @@ TARGET_SETTINGS = [
     ("ASSETCATALOG_COMPILER_APPICON_NAME", "AppIcon"),
     ("ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME", "AccentColor"),
     ("CODE_SIGN_STYLE", "Automatic"),
-    ("CURRENT_PROJECT_VERSION", "7"),
+    ("CURRENT_PROJECT_VERSION", "8"),
     ("DEVELOPMENT_TEAM", "\"\""),
     ("INFOPLIST_FILE", f"{APP_NAME}/Info.plist"),
     ("INFOPLIST_KEY_UIApplicationSceneManifest_Generation", "YES"),

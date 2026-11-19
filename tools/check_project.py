@@ -53,7 +53,10 @@ with open(SRC_DIR / "Info.plist", "rb") as f:
     info = plistlib.load(f)
 check(info.get("CFBundleDisplayName") == "S.W.I.S.H - Crossword Battle ARCADE", "Info.plist display name")
 check(info.get("CFBundleShortVersionString") == "1.1", "version is 1.1")
-check(info.get("CFBundleVersion") == "7", "build is 7")
+check(info.get("CFBundleVersion") == "8", "build is 8")
+check("UILaunchScreen" in info, "UILaunchScreen present (no letterbox mode)")
+check(info.get("CADisableMinimumFrameDurationOnPhone") is True,
+      "120Hz ProMotion enabled")
 check(info.get("ITSAppUsesNonExemptEncryption") is False, "ITSAppUsesNonExemptEncryption = false")
 check(info.get("UISupportedInterfaceOrientations") == ["UIInterfaceOrientationPortrait"],
       "portrait only (the ad's frame)")
@@ -138,8 +141,8 @@ check(pbx.count("IPHONEOS_DEPLOYMENT_TARGET = 17.0;") == 2,
       "deployment target 17.0 in Debug+Release")
 check(pbx.count("INFOPLIST_FILE = SwishArcade/Info.plist;") == 2,
       "INFOPLIST_FILE path in Debug+Release")
-check(pbx.count("CURRENT_PROJECT_VERSION = 7;") == 2,
-      "CURRENT_PROJECT_VERSION = 7 in Debug+Release")
+check(pbx.count("CURRENT_PROJECT_VERSION = 8;") == 2,
+      "CURRENT_PROJECT_VERSION = 8 in Debug+Release")
 check(pbx.count("MARKETING_VERSION = 1.1;") == 2,
       "MARKETING_VERSION = 1.1 in Debug+Release")
 

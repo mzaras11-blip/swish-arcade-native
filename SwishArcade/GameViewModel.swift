@@ -88,6 +88,15 @@ final class GameViewModel: ObservableObject {
     @Published var cameraScale = 1.0
     @Published var cameraAnchor = UnitPoint(x: 0.5, y: 0.45)
     private var cameraGeneration = 0
+    /// True once the current drag has taken its one camera focus.
+    private var dragFocusEngaged = false
+    /// For a drag that began as a board pick-up: the cell it came from.
+    /// The board cell's gesture uses it to prove it owns the drag
+    /// (the drag's source is converted to a rack slot at pick-up).
+    private(set) var dragOriginCell: Int? = nil
+    /// Bumped on every banner; a stale clear-task must not kill a
+    /// newer banner that happens to carry the same text.
+    private var bannerGeneration = 0
 
     // Geometry, fed by the views
     var boardRect: CGRect = .zero
@@ -190,12 +199,13 @@ final class GameViewModel: ObservableObject {
             }
             syncFromEngine()
         case .word(let side, _, let answer, let idxs, let bonus, _, let doubled):
-            let center = centroid(of: idxs)
+            let center = centroid(of: idxs)          // unscaled: camera-anchor input
+            let shown = visualPoint(center)          // on-screen: effects spawn here
             if side == .you {
                 Haptics.word()
                 SoundFX.shared.word()
-                spawnFloater("WORD +\(bonus)", atPoint: center, side: .you, big: true)
-                spawnBurst(at: center, kind: .wordBurst)
+                spawnFloater("WORD +\(bonus)", atPoint: shown, side: .you, big: true)
+                spawnBurst(at: shown, kind: .wordBurst)
                 if doubled {
                     showBanner("DOUBLE WORD SCORE", bolt: true)
                     cameraPunch(anchor: anchorOf(center))
@@ -204,7 +214,7 @@ final class GameViewModel: ObservableObject {
                 }
                 flashMood(bonus >= 60 || doubled ? .bigPlay : .celebrate)
             } else {
-                spawnFloater("\(answer) +\(bonus)", atPoint: center, side: .cpu, big: false)
+                spawnFloater("\(answer) +\(bonus)", atPoint: shown, side: .cpu, big: false)
                 flashMood(.ouch)
             }
             syncFromEngine()
@@ -229,7 +239,7 @@ final class GameViewModel: ObservableObject {
             SoundFX.shared.bomb()
             Haptics.word()
             spawnBurst(at: cellCenter(center), kind: .wordBurst)
-            cameraPunch(anchor: anchorOf(cellCenter(center)))
+            cameraPunch(anchor: anchorOf(cellCenterUnscaled(center)))
             syncFromEngine()
         case .shuffle:
             SoundFX.shared.pop()
@@ -250,7 +260,7 @@ final class GameViewModel: ObservableObject {
                 mascotMood = .celebrate
                 showBanner("YOU WIN!", bolt: false)
                 cameraWinPose()
-                spawnBurst(at: CGPoint(x: boardRect.midX, y: boardRect.midY), kind: .coins)
+                spawnBurst(at: visualPoint(CGPoint(x: boardRect.midX, y: boardRect.midY)), kind: .coins)
             } else {
                 mascotMood = .ouch
                 cameraRest()
@@ -264,13 +274,15 @@ final class GameViewModel: ObservableObject {
     // MARK: - Player actions (buttons + tap path)
 
     func tapRackSlot(_ slot: Int) {
-        guard phase == .playing else { return }
+        guard phase == .playing, drag == nil else { return }
         selectedSlot = (selectedSlot == slot) ? nil : slot
         if selectedSlot != nil { Haptics.lift() }
     }
 
     func tapCell(_ idx: Int) {
-        guard phase == .playing, let engine else { return }
+        // Taps are the second finger's path in — never let one fire
+        // (bomb, pick-up, place) while a drag is in the air.
+        guard phase == .playing, drag == nil, let engine else { return }
         if bombArmed {
             bombArmed = false
             suppressPlaceSound = true
@@ -316,10 +328,27 @@ final class GameViewModel: ObservableObject {
 
     func beginDrag(source: DragSource, at location: CGPoint) {
         guard phase == .playing, let engine else { return }
+        // One drag at a time: a second finger must never hijack the
+        // tile already in the air (Spec 2 failure mode 2). Safety
+        // valve: a drag whose source tile no longer holds its letter
+        // is stale (its gesture died without an end or a scene-phase
+        // cancel) — clear it instead of soft-locking all future drags.
+        if let existing = drag {
+            let stale: Bool
+            if case .rack(let s) = existing.source {
+                stale = rackValue(s) != existing.letter
+            } else { stale = false }
+            guard stale else { return }
+            self.drag = nil
+            hoverCell = nil
+            dragOriginCell = nil
+        }
+        dragFocusEngaged = false
         var source = source
         if case .board(let idx) = source {
             // Pick the just-set tile back up; the drag continues as a rack drag.
             guard let picked = engine.pickupLastPlacement(now: nowMs()) else { return }
+            dragOriginCell = idx
             source = .rack(picked.slot)
             syncFromEngine()
         }
@@ -337,6 +366,8 @@ final class GameViewModel: ObservableObject {
     }
 
     func endDrag() {
+        dragFocusEngaged = false
+        dragOriginCell = nil
         guard let drag, let engine else { self.drag = nil; return }
         let slot: Int
         if case .rack(let s) = drag.source { slot = s } else { slot = 0 }
@@ -348,6 +379,9 @@ final class GameViewModel: ObservableObject {
             suppressPlaceSound = true
             _ = engine.useBomb(centerIdx: target, now: nowMs())
             suppressPlaceSound = false
+            // If the bomb produced no camera event, don't leave the
+            // drag zoom stuck at 1.3 (Claude audit, 2026-11-19).
+            cameraRestSoon()
             syncFromEngine()
             return
         }
@@ -367,7 +401,13 @@ final class GameViewModel: ObservableObject {
     }
 
     func cancelDrag() {
-        if let drag, case .rack(let slot) = drag.source {
+        // Only a live drag cancels. Without this guard, any
+        // backgrounding on the win screen scheduled a camera rest that
+        // snapped the win pose back to 1.0 (Claude audit, 2026-11-19).
+        guard let drag else { return }
+        dragFocusEngaged = false
+        dragOriginCell = nil
+        if case .rack(let slot) = drag.source {
             returningTiles.append(ReturningTile(letter: drag.letter, from: drag.location,
                                                 to: rackSlotCenter(slot)))
         }
@@ -385,7 +425,13 @@ final class GameViewModel: ObservableObject {
         let idx = cellIndex(at: location)
         if idx != hoverCell {
             hoverCell = idx
-            if let idx, isDroppable(idx) {
+            // The drag camera engages ONCE, when the drag first reaches
+            // a droppable cell, and then holds still for the rest of the
+            // drag (Spec 2 decision 5: no camera move while a finger is
+            // down). Build 7 re-anchored on every hover-cell change, so
+            // the board slid under a still finger.
+            if let idx, isDroppable(idx), !dragFocusEngaged {
+                dragFocusEngaged = true
                 cameraDragFocus(idx: idx)
             }
         }
@@ -396,32 +442,86 @@ final class GameViewModel: ObservableObject {
     }
 
     // MARK: - Geometry helpers (game coordinate space)
+    //
+    // boardRect is the board's UNSCALED slot on screen. The camera
+    // scales the drawn board about cameraAnchor inside that rect, so
+    // anything that touches the board must convert between the two
+    // spaces: touches are inverse-mapped before hit-testing
+    // (cellIndex), and effect spawn points are forward-mapped so
+    // floaters and bursts land on the board the player actually sees
+    // (cellCenter). At rest (scale 1.0) both maps are the identity.
+    // Build 7 hit-tested raw touch points against the unscaled rect,
+    // so under any camera zoom the highlighted cell was not the cell
+    // under the player's finger.
 
-    var cellSize: CGFloat { boardRect.width > 0 ? boardRect.width / CGFloat(PuzzleGenerator.cols) : 0 }
+    /// The drawn cell size — the SAME geometry hit-testing uses
+    /// (cellExtent accounts for the grid gaps; a width/cols shortcut
+    /// here disagreed with cellIndex by the gap total).
+    var cellSize: CGFloat { cellExtent }
 
-    func cellCenter(_ idx: Int) -> CGPoint {
-        let cs = cellSize
-        let r = idx / PuzzleGenerator.cols, c = idx % PuzzleGenerator.cols
-        return CGPoint(x: boardRect.minX + (CGFloat(c) + 0.5) * cs,
-                       y: boardRect.minY + (CGFloat(r) + 0.5) * cs)
+    private var cameraAnchorPoint: CGPoint {
+        CGPoint(x: boardRect.minX + cameraAnchor.x * boardRect.width,
+                y: boardRect.minY + cameraAnchor.y * boardRect.height)
     }
 
+    /// Unscaled board space → on-screen game space (through the camera).
+    func visualPoint(_ p: CGPoint) -> CGPoint {
+        let a = cameraAnchorPoint
+        return CGPoint(x: a.x + (p.x - a.x) * cameraScale,
+                       y: a.y + (p.y - a.y) * cameraScale)
+    }
+
+    /// On-screen game space → unscaled board space (inverse camera).
+    func boardPoint(_ p: CGPoint) -> CGPoint {
+        let a = cameraAnchorPoint
+        guard cameraScale > 0 else { return p }
+        return CGPoint(x: a.x + (p.x - a.x) / cameraScale,
+                       y: a.y + (p.y - a.y) / cameraScale)
+    }
+
+    private var cellExtent: CGFloat {
+        boardRect.width > 0
+            ? (boardRect.width - BoardView.gap * CGFloat(PuzzleGenerator.cols - 1))
+                / CGFloat(PuzzleGenerator.cols)
+            : 0
+    }
+
+    /// Cell center in unscaled board space — the input for camera
+    /// anchors (anchorOf) and word centroids.
+    func cellCenterUnscaled(_ idx: Int) -> CGPoint {
+        let pitch = cellExtent + BoardView.gap
+        let r = idx / PuzzleGenerator.cols, c = idx % PuzzleGenerator.cols
+        return CGPoint(x: boardRect.minX + CGFloat(c) * pitch + cellExtent / 2,
+                       y: boardRect.minY + CGFloat(r) * pitch + cellExtent / 2)
+    }
+
+    /// Cell center on screen (through the camera) — where effects spawn.
+    func cellCenter(_ idx: Int) -> CGPoint { visualPoint(cellCenterUnscaled(idx)) }
+
     func cellIndex(at point: CGPoint) -> Int? {
-        guard boardRect.width > 0, boardRect.contains(point) else { return nil }
-        let c = Int((point.x - boardRect.minX) / cellSize)
-        let r = Int((point.y - boardRect.minY) / cellSize)
+        let p = boardPoint(point)
+        guard boardRect.width > 0, boardRect.contains(p) else { return nil }
+        let pitch = cellExtent + BoardView.gap
+        guard pitch > 0 else { return nil }
+        let c = Int((p.x - boardRect.minX) / pitch)
+        let r = Int((p.y - boardRect.minY) / pitch)
         guard r >= 0, r < PuzzleGenerator.rows, c >= 0, c < PuzzleGenerator.cols else { return nil }
         return r * PuzzleGenerator.cols + c
     }
 
     func rackSlotCenter(_ slot: Int) -> CGPoint {
         guard rackRect.width > 0 else { return .zero }
-        let w = rackRect.width / CGFloat(MatchEngine.rackSize)
-        return CGPoint(x: rackRect.minX + (CGFloat(slot) + 0.5) * w, y: rackRect.midY)
+        // Mirrors the rack's actual construction in GameScreen (tray
+        // padding, then tile + gap per slot) so a returning tile lands
+        // exactly on its slot instead of an equal-division guess.
+        let x = rackRect.minX + GameLayout.rackPadH + GameLayout.rackTile / 2
+            + CGFloat(slot) * (GameLayout.rackTile + GameLayout.gap)
+        return CGPoint(x: x, y: rackRect.midY)
     }
 
+    /// Centroid in unscaled board space (camera-anchor input).
     private func centroid(of idxs: [Int]) -> CGPoint {
-        let pts = idxs.map { cellCenter($0) }
+        let pts = idxs.map { cellCenterUnscaled($0) }
         return CGPoint(x: pts.map(\.x).reduce(0, +) / CGFloat(max(pts.count, 1)),
                        y: pts.map(\.y).reduce(0, +) / CGFloat(max(pts.count, 1)))
     }
@@ -485,9 +585,11 @@ final class GameViewModel: ObservableObject {
     private func showBanner(_ text: String, bolt: Bool) {
         bannerText = text
         bannerBolt = bolt
+        bannerGeneration += 1
+        let gen = bannerGeneration
         Task { [weak self] in
             try? await Task.sleep(nanoseconds: 1_400_000_000)
-            if self?.bannerText == text { self?.bannerText = nil }
+            if self?.bannerGeneration == gen { self?.bannerText = nil }
         }
     }
 
@@ -527,20 +629,40 @@ final class GameViewModel: ObservableObject {
     }
 
     private func cameraDragFocus(idx: Int) {
-        setCamera(scale: 1.3, anchor: anchorOf(cellCenter(idx)),
-                  spring: .spring(response: 0.35, dampingFraction: 0.8))
+        // Anchors live in UNSCALED board space (the same rule
+        // cameraWordFocus follows) — passing the forward-mapped
+        // cellCenter here put the anchor in visual space, and under
+        // any existing zoom the one drag engagement slid the board
+        // under the finger by more than a cell. Caught by Claude's
+        // audit of the build 8 fixes, 2026-11-19.
+        //
+        // The engagement is INSTANT, not sprung (same audit): while a
+        // spring runs, the drawn board is somewhere between transforms
+        // but hit-testing maps through the target — at 1.3× the gap is
+        // 0.3 × distance-from-anchor, several cells at the far edge.
+        // An instant set anchored on the hovered cell keeps that cell
+        // exactly under the finger and makes the model transform the
+        // rendered transform for the whole drag. The sprung zooms
+        // (word focus, punch, win pose) all happen with no finger down.
+        cameraGeneration += 1
+        cameraScale = 1.3
+        cameraAnchor = anchorOf(cellCenterUnscaled(idx))
     }
 
     private func cameraWordFocus(idx: Int, punch: Bool) {
-        guard let engine else { return }
+        // Never move the camera under a finger that is still down
+        // (Spec 2 decision 5) — a zoom that comes due mid-drag is
+        // skipped, not deferred; the floater and sound still fire.
+        guard drag == nil, let engine else { return }
         let wi = engine.wordIndices(at: idx).first ?? -1
-        let anchor = wi >= 0 ? anchorOf(centroid(of: puzzle.words[wi].cellIndices)) : anchorOf(cellCenter(idx))
+        let anchor = wi >= 0 ? anchorOf(centroid(of: puzzle.words[wi].cellIndices)) : anchorOf(cellCenterUnscaled(idx))
         setCamera(scale: punch ? 1.6 : 1.45, anchor: anchor,
                   spring: .spring(response: 0.3, dampingFraction: 0.72))
         cameraRestSoon(delay: 0.95)
     }
 
     private func cameraPunch(anchor: UnitPoint) {
+        guard drag == nil else { return }   // decision 5: no mid-drag camera
         setCamera(scale: 1.6, anchor: anchor, spring: .spring(response: 0.26, dampingFraction: 0.65))
         cameraRestSoon(delay: 0.8)
     }
