@@ -1,0 +1,251 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+		35C40ED2586D5F12F349CB73 /* SwishArcadeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAB93D38B4F95DFD5F241383 /* SwishArcadeApp.swift */; };
+		BC9C7CE137D90238E65FACF7 /* WordBank.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF5444DC74DAA42FC7BFC5E3 /* WordBank.swift */; };
+		B0FC6847580E543A6D5A66AA /* PuzzleGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 857C6D747E83DD79BB817F17 /* PuzzleGenerator.swift */; };
+		C8506E55E62C272363D03C13 /* MatchEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6FE2D151F718E6633807E5AC /* MatchEngine.swift */; };
+		3D76A415D631EE599BDB87A6 /* GameViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A56877EE906C65436B51B9BC /* GameViewModel.swift */; };
+		1BAA95A5A42C24FBE5896055 /* SoundFX.swift in Sources */ = {isa = PBXBuildFile; fileRef = 726010E61042F70DD82CA58B /* SoundFX.swift */; };
+		356F23A5763B058A4D820BB4 /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7319BFBB54675F8D1573DFB3 /* Haptics.swift */; };
+		A30A6380D7B9315B16504BF3 /* Tiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = 376679CF28EAF1BCA3D758F5 /* Tiles.swift */; };
+		86016482A4760E130BDDC075 /* BoardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 264C387623B7E123B845D10F /* BoardView.swift */; };
+		44D41975F0A1A7E73AC4FCAA /* MascotView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19DF8411912034020E59A3EE /* MascotView.swift */; };
+		CF624CF52A5D050B390E4BDA /* EffectsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49715552A9ADEB326E47D75A /* EffectsView.swift */; };
+		47AE91113D01091F0EDC67A6 /* GameScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EEC38D5BD47E097338295A3 /* GameScreen.swift */; };
+		A6070B9CF28E71610AA267AE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A790BB479B2477E3A634A1EB /* Assets.xcassets */; };
+		1ED6BB7238BF4EA507F3BCC3 /* words.json in Resources */ = {isa = PBXBuildFile; fileRef = 1A0B6F2EDD11A4B3985F0D88 /* words.json */; };
+		0B986C876E3EC44800452396 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C45E8EE69BEC76964CA40C2E /* PrivacyInfo.xcprivacy */; };
+		6D4BEC4AAF5EF4D01F4D4263 /* SwishArcade.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SwishArcade.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		AAB93D38B4F95DFD5F241383 /* SwishArcadeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwishArcadeApp.swift; sourceTree = "<group>"; };
+		FF5444DC74DAA42FC7BFC5E3 /* WordBank.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordBank.swift; sourceTree = "<group>"; };
+		857C6D747E83DD79BB817F17 /* PuzzleGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PuzzleGenerator.swift; sourceTree = "<group>"; };
+		6FE2D151F718E6633807E5AC /* MatchEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MatchEngine.swift; sourceTree = "<group>"; };
+		A56877EE906C65436B51B9BC /* GameViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameViewModel.swift; sourceTree = "<group>"; };
+		726010E61042F70DD82CA58B /* SoundFX.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundFX.swift; sourceTree = "<group>"; };
+		7319BFBB54675F8D1573DFB3 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
+		376679CF28EAF1BCA3D758F5 /* Tiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Tiles.swift; sourceTree = "<group>"; };
+		264C387623B7E123B845D10F /* BoardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BoardView.swift; sourceTree = "<group>"; };
+		19DF8411912034020E59A3EE /* MascotView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MascotView.swift; sourceTree = "<group>"; };
+		49715552A9ADEB326E47D75A /* EffectsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EffectsView.swift; sourceTree = "<group>"; };
+		1EEC38D5BD47E097338295A3 /* GameScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameScreen.swift; sourceTree = "<group>"; };
+		B15A13ACECE86FF5B996CE6C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A790BB479B2477E3A634A1EB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		1A0B6F2EDD11A4B3985F0D88 /* words.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = Resources/words.json; sourceTree = "<group>"; };
+		C45E8EE69BEC76964CA40C2E /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		424153ED3CD079DB4DB459AF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		518DA81DB9B99529C0C0AEBE /* Main group */ = {
+			isa = PBXGroup;
+			children = (
+				5B58818BBBFC302714416C20 /* SwishArcade */,
+				2F3A6B1E78F896718625FF06 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		2F3A6B1E78F896718625FF06 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				6D4BEC4AAF5EF4D01F4D4263 /* SwishArcade.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		5B58818BBBFC302714416C20 /* SwishArcade */ = {
+			isa = PBXGroup;
+			children = (
+				AAB93D38B4F95DFD5F241383 /* SwishArcadeApp.swift */,
+				FF5444DC74DAA42FC7BFC5E3 /* WordBank.swift */,
+				857C6D747E83DD79BB817F17 /* PuzzleGenerator.swift */,
+				6FE2D151F718E6633807E5AC /* MatchEngine.swift */,
+				A56877EE906C65436B51B9BC /* GameViewModel.swift */,
+				726010E61042F70DD82CA58B /* SoundFX.swift */,
+				7319BFBB54675F8D1573DFB3 /* Haptics.swift */,
+				376679CF28EAF1BCA3D758F5 /* Tiles.swift */,
+				264C387623B7E123B845D10F /* BoardView.swift */,
+				19DF8411912034020E59A3EE /* MascotView.swift */,
+				49715552A9ADEB326E47D75A /* EffectsView.swift */,
+				1EEC38D5BD47E097338295A3 /* GameScreen.swift */,
+				A790BB479B2477E3A634A1EB /* Assets.xcassets */,
+				1A0B6F2EDD11A4B3985F0D88 /* words.json */,
+				C45E8EE69BEC76964CA40C2E /* PrivacyInfo.xcprivacy */,
+				B15A13ACECE86FF5B996CE6C /* Info.plist */,
+			);
+			path = SwishArcade;
+			sourceTree = "<group>";
+		};
+		35304C685C0BA792259C4A38 /* SwishArcade */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 29558535A58E48B54399819B /* Build configuration list for PBXNativeTarget "SwishArcade" */;
+			buildPhases = (
+				7A70D71C385290AF96BF1031 /* Sources */,
+				424153ED3CD079DB4DB459AF /* Frameworks */,
+				285BB1C1430063331E9F5DD0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SwishArcade;
+			productName = SwishArcade;
+			productReference = 6D4BEC4AAF5EF4D01F4D4263 /* SwishArcade.app */;
+			productType = "com.apple.product-type.application";
+		};
+		AFC74C69B8FAF538E614821C /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = F72CF5329F6CB55C2A8467D4 /* Build configuration list for PBXProject */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (en);
+			mainGroup = 518DA81DB9B99529C0C0AEBE;
+			productRefGroup = 2F3A6B1E78F896718625FF06 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				35304C685C0BA792259C4A38 /* SwishArcade */,
+			);
+		};
+		285BB1C1430063331E9F5DD0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A6070B9CF28E71610AA267AE /* Assets.xcassets in Resources */,
+				1ED6BB7238BF4EA507F3BCC3 /* words.json in Resources */,
+				0B986C876E3EC44800452396 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		7A70D71C385290AF96BF1031 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				35C40ED2586D5F12F349CB73 /* SwishArcadeApp.swift in Sources */,
+				BC9C7CE137D90238E65FACF7 /* WordBank.swift in Sources */,
+				B0FC6847580E543A6D5A66AA /* PuzzleGenerator.swift in Sources */,
+				C8506E55E62C272363D03C13 /* MatchEngine.swift in Sources */,
+				3D76A415D631EE599BDB87A6 /* GameViewModel.swift in Sources */,
+				1BAA95A5A42C24FBE5896055 /* SoundFX.swift in Sources */,
+				356F23A5763B058A4D820BB4 /* Haptics.swift in Sources */,
+				A30A6380D7B9315B16504BF3 /* Tiles.swift in Sources */,
+				86016482A4760E130BDDC075 /* BoardView.swift in Sources */,
+				44D41975F0A1A7E73AC4FCAA /* MascotView.swift in Sources */,
+				CF624CF52A5D050B390E4BDA /* EffectsView.swift in Sources */,
+				47AE91113D01091F0EDC67A6 /* GameScreen.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5B1F3D16BDDD06B399DD5A51 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+			};
+			name = Debug;
+		};
+		023695D4F10AD17903F35E5D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		33DB9AF406492A6F48300E31 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 7;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = SwishArcade/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.swishgame.arcade;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+			};
+			name = Debug;
+		};
+		76B0835B06481007AA1651FE /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 7;
+				DEVELOPMENT_TEAM = "";
+				INFOPLIST_FILE = SwishArcade/Info.plist;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
+				MARKETING_VERSION = 1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.swishgame.arcade;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+			};
+			name = Release;
+		};
+		F72CF5329F6CB55C2A8467D4 /* Build configuration list for PBXProject */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5B1F3D16BDDD06B399DD5A51 /* Debug */,
+				023695D4F10AD17903F35E5D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		29558535A58E48B54399819B /* Build configuration list for PBXNativeTarget "SwishArcade" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				33DB9AF406492A6F48300E31 /* Debug */,
+				76B0835B06481007AA1651FE /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+	};
+	rootObject = AFC74C69B8FAF538E614821C /* Project object */;
+}
